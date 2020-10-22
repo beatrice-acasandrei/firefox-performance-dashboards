@@ -844,6 +844,8 @@ export const BENCHMARKS = {
   },
 };
 
+const VISUAL_METRICS = ['SpeedIndex', 'ContentfulSpeedIndex', 'PerceptualSpeedIndex'];
+
 const DESKTOP_SITES = {
   apple: 'Apple',
   amazon: 'Amazon',
@@ -893,30 +895,41 @@ const DEFAULT_SUITES = [
   'wasm-godot',
 ];
 
-Object.keys(DESKTOP_SITES).forEach((key) => {
-  const suite = `tp6-${key}`;
-  BENCHMARKS[`tp6-${key}`] = { compare: {}, label: `Tp6 ${DESKTOP_SITES[key]}` };
-  ['Firefox', 'Chromium', 'Chrome'].forEach((app) => {
-    BENCHMARKS[suite].compare[app.toLowerCase()] = {
-      color: COLORS[app.toLowerCase()],
-      label: app,
-      frameworkId: RAPTOR_FRAMEWORK_ID,
-      suite: `raptor-${suite}-${app.toLowerCase()}`,
-      option: 'opt',
+Object.keys(DESKTOP_SITES).forEach((siteKey) => {
+  VISUAL_METRICS.forEach((test) => {
+    const bmKey = `tp6-${siteKey}-${test}`;
+    BENCHMARKS[bmKey] = {
+      compare: {},
+      label: `tp6 - ${DESKTOP_SITES[siteKey]} - ${test} (cold)`,
     };
+    ['Firefox', 'Chromium', 'Chrome'].forEach((app) => {
+      BENCHMARKS[bmKey].compare[app.toLowerCase()] = {
+        color: COLORS[app.toLowerCase()],
+        label: app,
+        frameworkId: BROWSERTIME_FRAMEWORK_ID,
+        suite: siteKey,
+        test,
+        application: app.toLowerCase(),
+        project: app === 'Firefox' ? ALT_PROJECT : PROJECT,
+        option: 'opt',
+        extraOptions: ['cold'],
+      };
+    });
+    ['Firefox-WebRender', 'Firefox-Fission'].forEach((app) => {
+      BENCHMARKS[bmKey].compare[app.toLowerCase()] = {
+        color: COLORS[app.toLowerCase()],
+        label: app,
+        frameworkId: BROWSERTIME_FRAMEWORK_ID,
+        suite: siteKey,
+        test,
+        platformSuffix: '-qr',
+        project: app === 'Firefox-Fission' ? PROJECT : ALT_PROJECT,
+        option: 'opt',
+        extraOptions: ['cold'].concat(app === 'Firefox-Fission' ? ['fission'] : []).concat(['webrender']),
+      };
+    });
+    DEFAULT_SUITES.push(bmKey);
   });
-  ['Firefox-WebRender', 'Firefox-Fission'].forEach((app) => {
-    BENCHMARKS[suite].compare[app.toLowerCase()] = {
-      color: COLORS[app.toLowerCase()],
-      label: app,
-      frameworkId: RAPTOR_FRAMEWORK_ID,
-      suite: `raptor-${suite}-firefox`,
-      platformSuffix: '-qr',
-      option: 'opt',
-      extraOptions: ((app === 'Firefox-Fission') ? ['fission'] : []).concat(['webrender']),
-    };
-  });
-  DEFAULT_SUITES.push(suite);
 });
 
 const MOBILE_APPS = {
@@ -961,33 +974,40 @@ const MOBILE_SUITES = [
 ];
 
 Object.keys(MOBILE_SITES).forEach((siteKey) => {
-  const bmKey = `tp6m-${siteKey}`;
-  BENCHMARKS[bmKey] = { compare: {}, label: `Tp6 ${MOBILE_SITES[siteKey]}` };
-  Object.keys(MOBILE_APPS).forEach((appKey) => {
-    BENCHMARKS[bmKey].compare[appKey] = {
-      color: COLORS[appKey],
-      label: MOBILE_APPS[appKey],
-      frameworkId: BROWSERTIME_FRAMEWORK_ID,
-      suite: siteKey,
-      application: appKey,
-      option: 'opt',
-      extraOptions: ['cold'],
+  VISUAL_METRICS.forEach((test) => {
+    const bmKey = `tp6m-${siteKey}-${test}`;
+    BENCHMARKS[bmKey] = {
+      compare: {},
+      label: `tp6m - ${MOBILE_SITES[siteKey]} - ${test} (cold)`,
     };
-    if (!['fenix', 'chrome-m'].includes(appKey)) {
-      BENCHMARKS[bmKey].compare[appKey].project = ALT_PROJECT;
-    }
+    Object.keys(MOBILE_APPS).forEach((appKey) => {
+      BENCHMARKS[bmKey].compare[appKey] = {
+        color: COLORS[appKey],
+        label: MOBILE_APPS[appKey],
+        frameworkId: BROWSERTIME_FRAMEWORK_ID,
+        suite: siteKey,
+        test,
+        application: appKey,
+        option: 'opt',
+        extraOptions: ['cold'],
+      };
+      if (!['fenix', 'chrome-m'].includes(appKey)) {
+        BENCHMARKS[bmKey].compare[appKey].project = ALT_PROJECT;
+      }
+      BENCHMARKS[bmKey].compare['fenix-webrender'] = {
+        color: COLORS['fenix-webrender'],
+        label: 'Fenix-WebRender',
+        frameworkId: BROWSERTIME_FRAMEWORK_ID,
+        suite: siteKey,
+        test,
+        // platformSuffix: '-qr', // bug 1670902
+        application: 'fenix',
+        option: 'opt',
+        extraOptions: ['cold', 'webrender'],
+      };
+    });
+    MOBILE_SUITES.push(bmKey);
   });
-  BENCHMARKS[bmKey].compare['fenix-webrender'] = {
-    color: COLORS['fenix-webrender'],
-    label: 'Fenix-Webrender',
-    frameworkId: BROWSERTIME_FRAMEWORK_ID,
-    suite: siteKey,
-    platformSuffix: '-qr',
-    application: 'fenix',
-    option: 'opt',
-    extraOptions: ['cold'],
-  };
-  MOBILE_SUITES.push(bmKey);
 });
 
 export const CONFIG = {
